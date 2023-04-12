@@ -363,36 +363,52 @@ class TSPSolver:
         found_improvement = 0
         bssf_updates = 0
         stop_condition = len(cities) ** 3
+        numCities = len(cities)
+
         while found_improvement < stop_condition and time.time() - start_time < time_allowance:
 
             # Choose two random cities to swap
-            swap_index1 = random.randint(0, len(order) - 1)
-            swap_index2 = random.randint(0, len(order) - 1)
+            for i in range(numCities):
+                for j in range(i, numCities):
+                    swap_index1 = order[i]
+                    swap_index2 = order[j]
+                    new_order = order[:swap_index1] + list(reversed(order[swap_index1:swap_index2 + 1])) + order[swap_index2 + 1:]
+                    new_distance = two_opt_total_distance(cities, new_order)
+                    if new_distance < best_distance:
+                        order = new_order
+                        best_distance = new_distance
+                        bssf_updates += 1
+                        found_improvement = 0
+                    else:
+                        found_improvement += 1
 
+            # swap_index1 = random.randint(0, len(order) - 1)
+            # swap_index2 = random.randint(0, len(order) - 1)
+            
             # Make sure the two cities are different
             while swap_index1 == swap_index2:
                 swap_index2 = random.randint(0, len(order) - 1)
 
             # Swap the cities
-            new_order = order[:swap_index1] + list(reversed(order[swap_index1:swap_index2 + 1])) + order[swap_index2 + 1:]
+            # new_order = order[:swap_index1] + list(reversed(order[swap_index1:swap_index2 + 1])) + order[swap_index2 + 1:]
 
             # Calculate the new distance
-            new_distance = two_opt_total_distance(cities, new_order)
+            # new_distance = two_opt_total_distance(cities, new_order)
 
             # If the new order is better, update the current order and best distance
-            if new_distance < best_distance:
-                order = new_order
-                best_distance = new_distance
-                bssf_updates += 1
-                found_improvement = 0
-            else:
-                found_improvement += 1
+            # if new_distance < best_distance:
+            #     order = new_order
+            #     best_distance = new_distance
+            #     bssf_updates += 1
+            #     found_improvement = 0
+            # else:
+            #     found_improvement += 1
         end_time = time.time()
         final_route = []
         for index in order:
             final_route.append(cities[index])
         bssf = TSPSolution(final_route)
-        bssf_cost = two_opt_total_distance(cities, order)
+        bssf_cost = bssf._costOfRoute
 
         results = {'cost': bssf_cost, 'time': end_time - start_time, 'count': bssf_updates,
                    'soln': bssf, 'max': None, 'total': None, 'pruned': None}
