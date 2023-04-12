@@ -85,6 +85,20 @@ def branch_and_bound_reduce_array(array, lower_bound):
     return array, lower_bound
 
 
+def two_opt_total_distance(cities, order):
+    """
+    Takes an Array of cities and an array of the order of those cities,
+    and sums the distance from the first city to the last along the order.
+    """
+    dist = 0
+    for i in range(len(order)):
+        j = i + 1
+        if i == len(order) - 1:
+            j = 0
+        dist += cities[order[i]].costTo(cities[order[j]])
+    return dist
+
+
 class TSPSolver:
     def __init__(self, gui_view):
         self._scenario = None
@@ -222,6 +236,25 @@ class TSPSolver:
     '''
 
     def branchAndBound(self, time_allowance=60.0):
+        """
+        This function is very complex, so bare with me. This is the branch and bound algorithm that initializes and runs
+        the branch and bound to find an optimal solution to TSP. This uses a heap queue from python to take the state
+        with the lowest bound and continue to dig deeper until it finds a possible solution. This implementation will
+        prioritize the lowest depth in the tree before the lowest bound in order to update the BSSF as fast as possible
+        and to begin to prune the search tree.
+
+        Time Complexity:
+        The branch and bound algorithm will create n - 1 branches which could each have n - 1 branches to be evaluated.
+        As we go down the tree, and we attempt to prune these branches, the time complexity on average is far better
+        than this worst case scenario, but the total time complexity could be O(n!) if every branch must be evaluated to
+        find the optimal solution.
+        Time: Worst case: O(n!) with average case O(n^2 * 2^n)
+
+        Space Complexity:
+        We must store the total path, reduced array matrix and lower bound for every branch in the tree. Because there
+        are a possible total n branches on the heap queue at a single time, this means we could have n * n^2 space.
+        Space: O(n^3)
+        """
         # Get Default tour for bssf to start pruning
         default = self.defaultRandomTour()
         bssf_cost = default['cost']
@@ -281,8 +314,7 @@ class TSPSolver:
                 new_array[current_city, :] = np.inf
                 new_array[:, next_city] = np.inf
                 new_array[next_city, current_city] = np.inf
-                new_array, new_lb = branch_and_bound_reduce_array(new_array,
-                                                                  true_lb)  # Reduce each state in n^2 time so O(2^n * n^2)
+                new_array, new_lb = branch_and_bound_reduce_array(new_array, true_lb)  # Reduce each state in n^2 time so O(2^n * n^2)
                 new_lb = new_lb + travel_cost
                 new_depth = depth + 1
                 new_depth_remaining = ncities - new_depth
@@ -305,8 +337,8 @@ class TSPSolver:
             bssf = default['soln']
             print("Using default")
 
-        results = {'cost': bssf_cost, 'time': end_time - start_time, 'count': bssf_updates, 'soln': bssf, 'max': max_q,
-                   'total': total, 'pruned': pruned}
+        results = {'cost': bssf_cost, 'time': end_time - start_time, 'count': bssf_updates,
+                   'soln': bssf, 'max': max_q, 'total': total, 'pruned': pruned}
         return results
 
     ''' <summary>
@@ -317,9 +349,54 @@ class TSPSolver:
         best solution found.  You may use the other three field however you like.
         algorithm</returns>
     '''
+
     def fancy(self, time_allowance=60.0):
-        results = {}
-        pass
+        """Solve the TSP using the 2-opt algorithm."""
+        cities = self._scenario.getCities()
+        greedy_start = self.greedySolver(cities[0])
+        order = []
+        for city in greedy_start.route:
+            order.append(cities.index(city))
+
+        best_distance = two_opt_total_distance(cities, order)
+        start_time = time.time()
+        found_improvement = 0
+        bssf_updates = 0
+        stop_condition = len(cities) ** 3
+        while found_improvement < stop_condition and time.time() - start_time < time_allowance:
+
+            # Choose two random cities to swap
+            swap_index1 = random.randint(0, len(order) - 1)
+            swap_index2 = random.randint(0, len(order) - 1)
+
+            # Make sure the two cities are different
+            while swap_index1 == swap_index2:
+                swap_index2 = random.randint(0, len(order) - 1)
+
+            # Swap the cities
+            new_order = order[:swap_index1] + list(reversed(order[swap_index1:swap_index2 + 1])) + order[swap_index2 + 1:]
+
+            # Calculate the new distance
+            new_distance = two_opt_total_distance(cities, new_order)
+
+            # If the new order is better, update the current order and best distance
+            if new_distance < best_distance:
+                order = new_order
+                best_distance = new_distance
+                bssf_updates += 1
+                found_improvement = 0
+            else:
+                found_improvement += 1
+        end_time = time.time()
+        final_route = []
+        for index in order:
+            final_route.append(cities[index])
+        bssf = TSPSolution(final_route)
+        bssf_cost = two_opt_total_distance(cities, order)
+
+        results = {'cost': bssf_cost, 'time': end_time - start_time, 'count': bssf_updates,
+                   'soln': bssf, 'max': None, 'total': None, 'pruned': None}
+        return results
 
     def printMatrix(self, arr):
         # Determine the width of each column based on the maximum number of digits in any element
