@@ -99,6 +99,22 @@ def two_opt_total_distance(cities, order):
     return dist
 
 
+def print_matrix(arr):
+    # Determine the width of each column based on the maximum number of digits in any element
+    col_widths = [max(len('{:.5f}'.format(x)) for x in col) for col in arr.T]
+
+    # Print the array row by row, with values aligned within each column
+    for row in arr:
+        for i, x in enumerate(row):
+            if x != math.inf and not math.isnan(x):
+                print('{:{width}d}'.format(int(x), width=col_widths[i]), end=' ')
+            else:
+                # Use the appropriate column width and right-align the value
+                print('{:{width}.5f}'.format(x, width=col_widths[i]), end=' ')
+        print()  # Start a new row after all columns have been printed
+    print()
+
+
 class TSPSolver:
     def __init__(self, gui_view):
         self._scenario = None
@@ -360,33 +376,25 @@ class TSPSolver:
 
         best_distance = two_opt_total_distance(cities, order)
         start_time = time.time()
-        found_improvement = 0
+        found_improvement = True
         bssf_updates = 0
         stop_condition = len(cities) ** 3
-        while found_improvement < stop_condition and time.time() - start_time < time_allowance:
-
-            # Choose two random cities to swap
-            swap_index1 = random.randint(0, len(order) - 1)
-            swap_index2 = random.randint(0, len(order) - 1)
-
-            # Make sure the two cities are different
-            while swap_index1 == swap_index2:
-                swap_index2 = random.randint(0, len(order) - 1)
-
-            # Swap the cities
-            new_order = order[:swap_index1] + list(reversed(order[swap_index1:swap_index2 + 1])) + order[swap_index2 + 1:]
-
-            # Calculate the new distance
-            new_distance = two_opt_total_distance(cities, new_order)
-
-            # If the new order is better, update the current order and best distance
-            if new_distance < best_distance:
-                order = new_order
-                best_distance = new_distance
-                bssf_updates += 1
-                found_improvement = 0
-            else:
-                found_improvement += 1
+        while found_improvement and time.time() - start_time < time_allowance:
+            found_improvement = False
+            for i in range(0, len(order)):
+                for j in range(0, len(order)):
+                    # if same city, continue
+                    if i == j:
+                        continue
+                    # Swap the cities
+                    new_order = order[:i] + order[i:j + 1][::-1] + order[j + 1:]
+                    # Calculate the new distance
+                    new_distance = two_opt_total_distance(cities, new_order)
+                    # If the new order is better, update the current order and best distance
+                    if new_distance < best_distance:
+                        order = new_order
+                        best_distance = new_distance
+                        found_improvement = True
         end_time = time.time()
         final_route = []
         for index in order:
@@ -397,18 +405,3 @@ class TSPSolver:
         results = {'cost': bssf_cost, 'time': end_time - start_time, 'count': bssf_updates,
                    'soln': bssf, 'max': None, 'total': None, 'pruned': None}
         return results
-
-    def printMatrix(self, arr):
-        # Determine the width of each column based on the maximum number of digits in any element
-        col_widths = [max(len('{:.5f}'.format(x)) for x in col) for col in arr.T]
-
-        # Print the array row by row, with values aligned within each column
-        for row in arr:
-            for i, x in enumerate(row):
-                if x != math.inf and not math.isnan(x):
-                    print('{:{width}d}'.format(int(x), width=col_widths[i]), end=' ')
-                else:
-                    # Use the appropriate column width and right-align the value
-                    print('{:{width}.5f}'.format(x, width=col_widths[i]), end=' ')
-            print()  # Start a new row after all columns have been printed
-        print()
