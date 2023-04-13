@@ -369,9 +369,9 @@ class TSPSolver:
     def fancy(self, time_allowance=60.0):
         """Solve the TSP using the 2-opt algorithm."""
         cities = self._scenario.getCities()
-        greedy_start = self.greedySolver(cities[0])
+        greedy_start = self.greedy()
         order = []
-        for city in greedy_start.route:
+        for city in greedy_start['soln'].route:
             order.append(cities.index(city))
 
         best_distance = two_opt_total_distance(cities, order)
